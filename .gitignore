@@ -1,3 +1,10 @@
+# Misc
+log.txt
+
+# Compilation artifacts
+bin/
+obj/
+
 # Vagrant
 .vagrant/
 
