@@ -35,7 +35,6 @@ void tcpCom::init(){
 	//Set up connection
 	try
     {
-        boost::thread_group threads;
         socket_ptr sock(new tcp::socket(service));
 
         sock->connect(ep);
@@ -43,7 +42,7 @@ void tcpCom::init(){
         cout << "Connected" << endl;
 
       	//Start approriate threads
-        //threads.create_thread(boost::bind(tcpCom::recieve, sock));
+        new boost::thread(&tcpCom::recieve, this);
     }
     catch(std::exception& e)
     {
@@ -73,12 +72,20 @@ void tcpCom::recieve(){
             messageQueue->push(msg);
             mtx.unlock();
         }
+        /*
+        if(!messageQueue->empty())
+        {
+            cout << "\n" + *(messageQueue->front());
+            messageQueue->pop();
+        }
+        */
 
         boost::this_thread::sleep( boost::posix_time::millisec(1000));
     }
 }
 
 void tcpCom::broadcast(){
-	//Some way to broadcast and connect to peers
+	//UDP broadcast
+
 	//Will need a meber list/map
 }
