@@ -12,6 +12,6 @@ class tcpCom {
 
   public:
   	tcpCom();
-  	void send(std::string &msg);
+  	void send(std::string msg);
 
 };	

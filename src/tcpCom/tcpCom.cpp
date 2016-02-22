@@ -64,12 +64,11 @@ void tcpCom::connectionHandler(){
     }
 }
 
-void tcpCom::send(std::string &msg){
-
+void tcpCom::send(string msg){
+    string_ptr msgptr(new string(msg));
     clientMap_ptr cm(new clientMap);
-    //cm->insert(NULL, msg);
-
-    //messageQueue->push(cm);
+    cm->insert(pair<socket_ptr, string_ptr>(NULL, msgptr));
+    messageQueue->push(cm);
 }
 
 void tcpCom::respond(){
