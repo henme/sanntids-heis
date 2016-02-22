@@ -38,7 +38,7 @@ int main () {
             {
                 i = stoi(*(messageQueue->front()));
             }
-                messageQueue->pop();
+            messageQueue->pop();
         }
         catch(std::exception& e)
         {
