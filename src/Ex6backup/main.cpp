@@ -21,34 +21,35 @@ int main () {
     cout << "Waiting for main to connect..." << endl;
     socket_ptr clientSock(new tcp::socket(service));
     acceptor.accept(*clientSock); 
-    cout << "Main connected! ";
+    cout << "Main connected! " << endl;
 
     int bytesRead = 0;
     char readBuf[1024] = {0};
-/*
-    for(;;)
-    {
-        if(clientSock->available())
+    int i;
+
+    while(1){
+       try
         {
             bytesRead = clientSock->read_some(buffer(readBuf, 256));
             string_ptr msg(new string(readBuf, bytesRead));
 
             messageQueue->push(msg);
+            if(!messageQueue->empty())
+            {
+                i = stoi(*(messageQueue->front()));
+            }
+                messageQueue->pop();
         }
-        if(!messageQueue->empty())
+        catch(std::exception& e)
         {
-            cout << "\n" + *(messageQueue->front());
+            //cerr << "\n" << e.what() << endl;
+            break;
         }
-        messageQueue->pop();
     }
-*/
-    if(0){
-      for(int i = 1; i < 5; i++){
-      std::cout << i << std::endl;
-      }
+    i++;
+    for(i=i; i < 5; i++){
+        cout << i << endl;
     }
-    puts("Press any key to exit...");
-    getc(stdin);
     return 0;
 }
 

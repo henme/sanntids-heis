@@ -22,14 +22,14 @@ int main () {
 
     socket_ptr sock(new tcp::socket(service));
     sock->connect(ep);
-    
-    string inputMsg = "test";
+
+    string msg;
 
     for(int i = 1; i < 5; i++){
 	    cout << i << endl;
-        sock->write_some(buffer(inputMsg, inputSize));
+        msg = to_string(i);
+        sock->write_some(buffer(msg, inputSize));
         boost::this_thread::sleep( boost::posix_time::millisec(1000));
-	    //Boradcast "im alive!, and counted to i."
     }
     puts("Press any key to exit...");
     getc(stdin);
