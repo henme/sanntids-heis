@@ -6,7 +6,7 @@
 
 int main () {
     tcpCom com;
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     std::string msg = "Test";
     com.send(msg);
     puts("Press any key to exit...");

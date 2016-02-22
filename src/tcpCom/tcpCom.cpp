@@ -32,7 +32,6 @@ const int bufSize = 1024;
 
 tcpCom::tcpCom(){
 	tcpCom::init();
-	tcpCom::broadcast();
 }
 
 void tcpCom::init(){
@@ -42,6 +41,8 @@ void tcpCom::init(){
     new boost::thread(bind(&tcpCom::recieve, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
     new boost::thread(bind(&tcpCom::respond, this));
+    boost::this_thread::sleep( boost::posix_time::millisec(100));        
+    new boost::thread(bind(&tcpCom::udpBroadcaster, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));        
 }
 
@@ -125,8 +126,23 @@ void tcpCom::recieve(){
     }
 }
 
-void tcpCom::broadcast(){
-	//UDP broadcast
+void tcpCom::udpBroadcaster(){
+	//UDP broadcast, "Connect to me!"
+    io_service udpService;
+    udp::socket socket(udpService);
+    udp::endpoint remote_endpoint;
+    socket_base::broadcast option(true);
+    //socket.set_option(option);
+    //udp::socket udpsock(udpService, udp::endpoint(udp::v4(), 13));
+    //remote_endpoint = udp::endpoint(udp::v4(), 13);
+    
+    //boost::system::error_code ignored_error;
 
-	//Will need a meber list/map
+    //socket.send_to(buffer("message", 7), remote_endpoint, 0); //ignored_error);
+    for (;;){
+        //char data[1024];
+        //udp::endpoint sender_endpoint;
+        //size_t length = udpsock.receive_from(buffer(data, 1024), sender_endpoint);
+        //udpsock.send_to(buffer(data, length), sender_endpoint);
+    }
 }

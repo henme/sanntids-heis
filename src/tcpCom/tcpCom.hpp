@@ -6,7 +6,7 @@ class tcpCom {
   private:
   	void init();
   	void connectionHandler();
-  	void broadcast();
+  	void udpBroadcaster();
   	void respond();
    	void recieve();
 
