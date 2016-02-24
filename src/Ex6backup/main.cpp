@@ -3,6 +3,7 @@
 #include <queue>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/udp.hpp>
+#include <boost/thread.hpp>
 
 using namespace std;
 using namespace boost;
@@ -14,6 +15,7 @@ typedef boost::shared_ptr<string> string_ptr;
 typedef boost::shared_ptr< queue<string_ptr> > messageQueue_ptr;
 
 int main () {
+    //Backup kicks inn if no ack from main
     io_service service;
     tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), 8001));
     messageQueue_ptr messageQueue(new queue<string_ptr>);
@@ -25,10 +27,9 @@ int main () {
 
     int bytesRead = 0;
     char readBuf[1024] = {0};
-    int i;
-
+    int i = 1;
     while(1){
-       try
+        try
         {
             bytesRead = clientSock->read_some(buffer(readBuf, 256));
             string_ptr msg(new string(readBuf, bytesRead));
@@ -49,6 +50,7 @@ int main () {
     i++;
     for(i=i; i < 5; i++){
         cout << i << endl;
+        boost::this_thread::sleep( boost::posix_time::millisec(1000));
     }
     return 0;
 }

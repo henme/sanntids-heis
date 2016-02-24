@@ -2,7 +2,7 @@
 
 #include <string>
 
-class tcpCom {
+class network {
   private:
   	void init();
   	void connectionHandler();
@@ -11,7 +11,7 @@ class tcpCom {
    	void recieve();
 
   public:
-  	tcpCom();
+  	network();
   	void send(std::string msg);
 
 };	
