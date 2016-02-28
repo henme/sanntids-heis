@@ -43,7 +43,7 @@ void printnumbers() {
 	    cout << i << endl;
         msg = to_string(i);
         sock->write_some(buffer(msg, inputSize));
-        boost::this_thread::sleep( boost::posix_time::millisec(1000));
+        boost::this_thread::sleep( boost::posix_time::millisec(10000));
     }
 }
 

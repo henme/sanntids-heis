@@ -22,14 +22,15 @@ typedef boost::shared_ptr<clientMap> clientMap_ptr;
 typedef boost::shared_ptr< list<socket_ptr> > clientList_ptr;
 typedef boost::shared_ptr< queue<clientMap_ptr> > messageQueue_ptr;
 
-const short port = 8002;
+const short port = 8001;
 const int bufSize = 1024;
 
 io_service service;
 tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), port));
 boost::mutex mtx;
 clientList_ptr clientList(new list<socket_ptr>);
-messageQueue_ptr messageQueue(new queue<clientMap_ptr>) ;
+messageQueue_ptr InnMessageQueue(new queue<clientMap_ptr>) ;
+messageQueue_ptr OutMessageQueue(new queue<clientMap_ptr>) ;
 
 network::network(){
     network::init();
@@ -70,15 +71,15 @@ void network::send(string msg){
     string_ptr msgptr(new string(msg));
     clientMap_ptr cm(new clientMap);
     cm->insert(pair<socket_ptr, string_ptr>(NULL, msgptr));
-    messageQueue->push(cm);
+    OutMessageQueue->push(cm);
 }
 
 void network::respond(){
     for(;;)
     {
-        if(!messageQueue->empty())
+        if(!OutMessageQueue->empty())
         {
-            auto message = messageQueue->front();
+            auto message = OutMessageQueue->front();
 
             mtx.lock();
             for(auto& clientSock : *clientList)
@@ -88,7 +89,7 @@ void network::respond(){
             mtx.unlock();
 
             mtx.lock();
-            messageQueue->pop();
+            OutMessageQueue->pop();
             mtx.unlock();
         }
 
@@ -107,17 +108,14 @@ void network::recieve(){
                 if(clientSock->available())
                 {
                     char readBuf[bufSize] = {0};
-
                     int bytesRead = clientSock->read_some(buffer(readBuf, bufSize));
-
                     string_ptr msg(new string(readBuf, bytesRead));
-
-                    clientMap_ptr cm(new clientMap);
-                    cm->insert(pair<socket_ptr, string_ptr>(clientSock, msg));
-
-                    messageQueue->push(cm);
-
-                    cout << *msg << endl;
+                    string ip = clientSock->remote_endpoint().address().to_string();
+                    string payload = ip + " " + *msg;
+                    mtx.lock();
+                    InnboundMessages.push_back(payload);
+                    mtx.unlock();
+                    //cout << payload << endl;
                 }
             }
             mtx.unlock();
@@ -128,15 +126,16 @@ void network::recieve(){
 }
 
 void network::udpBroadcaster(){
+/*
     //Loopbakc for test
     tcp::endpoint ep(ip::address::from_string("127.0.0.1"), port);
     try
     {
         socket_ptr sock(new tcp::socket(service));
         sock->connect(ep);
-        // Infiinte msg loop!!!
-        //clientList->emplace_back(sock);
-        cout << "Connected!" << endl;
+        // loop msg!
+        clientList->emplace_back(sock);
+        //cout << "Connected!" << endl;
     }
     catch(std::exception& e)
     {
@@ -144,27 +143,40 @@ void network::udpBroadcaster(){
         cout << "Not Connect!" << endl;
 
     }
+*/
 
-/*
     //UDP broadcast, "Connect to me!"
     io_service udpService;
     udp::socket socket(udpService);
-    udp::endpoint remote_endpoint;
     socket_base::broadcast option(true);
-    //socket.set_option(option);
-    //udp::socket udpsock(udpService, udp::endpoint(udp::v4(), 13));
-    //remote_endpoint = udp::endpoint(udp::v4(), 13);
+    udp::endpoint remote_endpoint(address_v4::any(), 13);
     
-    //boost::system::error_code ignored_error;
-
-    //socket.send_to(buffer("message", 7), remote_endpoint, 0); //ignored_error);
+    boost::system::error_code ignored_error;
+    int msgsize = 9;
+    socket.send_to(buffer("127.0.0.1", msgsize), remote_endpoint, 0, ignored_error);
     for (;;){
-        //Heartbeat
+        //Listen for incomming
+        if(socket.available())
+        {
+            char data[9] ={0};
+            size_t length = socket.receive_from(buffer(data, msgsize), remote_endpoint,0, ignored_error);
+            string_ptr msg(new string(data, length));
+            try
+            {
+                tcp::endpoint ep(ip::address::from_string(*msg), port);
+                cout << *msg << endl;
+                socket_ptr sock(new tcp::socket(service));
+                sock->connect(ep);
+                // loop msg!
+                clientList->emplace_back(sock);
+                cout << "Connected!" << endl;
+            }
+            catch(std::exception& e)
+            {
+                cerr << e.what() << endl;
+                cout << "Not Connect!" << endl;
 
-        //char data[1024];
-        //udp::endpoint sender_endpoint;
-        //size_t length = udpsock.receive_from(buffer(data, 1024), sender_endpoint);
-        //udpsock.send_to(buffer(data, length), sender_endpoint);
+            }
+        }
     }
-*/
 }
