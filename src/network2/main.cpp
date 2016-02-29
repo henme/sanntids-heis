@@ -6,7 +6,7 @@
 #include "network.hpp"
 
 int main () {
-    network com(8001);
+    network com(8002);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     std::string sendmsg = "Test";
     while(1){

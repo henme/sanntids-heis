@@ -147,7 +147,7 @@ void network::udpBroadcaster(){
 
     }
 */
-    //UDP broadcast, "Connect to me!"
+    //UDP broadcast onces; "Connect to me!"
     io_service io_service;
     udp::socket socket(io_service, udp::endpoint(udp::v4(), 0));
     socket.set_option(socket_base::broadcast(true));
@@ -169,7 +169,7 @@ void network::udpBroadcaster(){
         if(!msg->empty()){
             try
             {
-                tcp::endpoint ep(address::from_string(*msg), 8002);
+                tcp::endpoint ep(address::from_string(*msg), 8001);
                 cout << *msg << endl;
                 socket_ptr sock(new tcp::socket(service));
                 sock->connect(ep);
