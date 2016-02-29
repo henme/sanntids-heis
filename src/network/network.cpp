@@ -129,32 +129,13 @@ void network::recieve(){
 }
 
 void network::udpBroadcaster(){
-/*
-    //Loopbakc for test
-    tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 8002);
-    try
-    {
-        socket_ptr sock(new tcp::socket(service));
-        sock->connect(ep);
-        // loop msg!
-        clientList->emplace_back(sock);
-        cout << "Connected!" << endl;
-    }
-    catch(std::exception& e)
-    {
-        cerr << e.what() << endl;
-        cout << "Not Connect!" << endl;
-
-    }
-*/
     //UDP broadcast, "Connect to me!"
     io_service io_service;
     udp::socket socket(io_service, udp::endpoint(udp::v4(), 0));
     socket.set_option(socket_base::broadcast(true));
     ip::udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8888);
     char data[1024];
-    string tmp = "127.0.0.1";
-    strcpy(data, tmp.c_str());
+    strcpy(data, ip.c_str());
     socket.send_to(buffer(data), broadcast_endpoint);
     //Recieve loop
 
