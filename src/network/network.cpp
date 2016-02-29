@@ -31,10 +31,6 @@ messageQueue_ptr OutMessageQueue(new queue<clientMap_ptr>);
 
 network::network(int port, string ip) : port(port), ip(ip)
 {
-    network::init();
-}
-
-void network::init(){
     //Start approriate threads
     new boost::thread(bind(&network::connectionHandler, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
@@ -43,13 +39,13 @@ void network::init(){
     new boost::thread(bind(&network::respond, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));        
     new boost::thread(bind(&network::udpBroadcaster, this));
-    boost::this_thread::sleep( boost::posix_time::millisec(100));        
+    boost::this_thread::sleep( boost::posix_time::millisec(100));   
 }
 
 void network::connectionHandler(){
     cout << "Waiting for peers..." << endl;
     tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), port));
-    for(;;)
+    while(true)
     {
         socket_ptr clientSock(new tcp::socket(service));
 
@@ -69,11 +65,13 @@ void network::send(string msg){
     string_ptr msgptr(new string(msg));
     clientMap_ptr cm(new clientMap);
     cm->insert(pair<socket_ptr, string_ptr>(NULL, msgptr));
+    mtx.lock();
     OutMessageQueue->push(cm);
+    mtx.unlock();
 }
 
 void network::respond(){
-    for(;;)
+    while(true)
     {
         if(!OutMessageQueue->empty())
         {
@@ -98,13 +96,12 @@ void network::respond(){
             OutMessageQueue->pop();
             mtx.unlock();
         }
-
         boost::this_thread::sleep( boost::posix_time::millisec(200));
     }
 }
 
 void network::recieve(){
-    for(;;)
+    while(true)
     {
         if(!clientList->empty())
         {
@@ -123,9 +120,14 @@ void network::recieve(){
             }
             mtx.unlock();
         }
-
         boost::this_thread::sleep( boost::posix_time::millisec(200));
     }
+}
+
+std::vector<std::string> network::get_messages(){
+      vector<std::string> messages = InnboundMessages;
+      InnboundMessages = {};
+      return messages;
 }
 
 void network::udpBroadcaster(){
@@ -134,23 +136,24 @@ void network::udpBroadcaster(){
     udp::socket socket(io_service, udp::endpoint(udp::v4(), 0));
     socket.set_option(socket_base::broadcast(true));
     ip::udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8888);
-    char data[1024];
+    char data[bufSize];
     strcpy(data, ip.c_str());
     socket.send_to(buffer(data), broadcast_endpoint);
-    //Recieve loop
 
+    //Listen for incomming broadcast
     udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888 ));
     udp::endpoint sender_endpoint;
-    for (;;){
-        //Listen for incomming
-        char data[9] ={0};
+    while(true)
+    {
+        char data[bufSize] ={0};
         std::size_t bytes_transferred = recieveSocket.receive_from(buffer(data), sender_endpoint);
         string_ptr msg(new string(data, bytes_transferred));
-        cout << *msg << endl;
-        if(!msg->empty()){
+        //Connect to given ip
+        if(!msg->empty())
+        {
             try
             {
-                tcp::endpoint ep(address::from_string(*msg), 8002);
+                tcp::endpoint ep(address::from_string(*msg), port);
                 cout << *msg << endl;
                 socket_ptr sock(new tcp::socket(service));
                 sock->connect(ep);
