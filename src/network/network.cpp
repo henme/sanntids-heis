@@ -29,7 +29,7 @@ boost::mutex mtx;
 clientList_ptr clientList(new list<socket_ptr>);
 messageQueue_ptr OutMessageQueue(new queue<clientMap_ptr>);
 
-network::network(int port) : port(port)
+network::network(int port, string ip) : port(port), ip(ip)
 {
     network::init();
 }

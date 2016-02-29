@@ -6,7 +6,8 @@
 class network {
 
   std::vector<std::string> InnboundMessages;
-  int port; 
+  int port;
+  std::string ip; 
 
   private:
   	void init();
@@ -16,7 +17,7 @@ class network {
    	void recieve();
 
   public:
-  	network(int port);
+  	network(int port, std::string ip);
   	void send(std::string msg);
     std::vector<std::string> get_messages(){
       std::vector<std::string> messages = InnboundMessages;
