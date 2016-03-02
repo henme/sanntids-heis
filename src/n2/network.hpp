@@ -11,7 +11,6 @@ class network {
 
   private:
   	void connectionHandler();
-    void heartbeat();
   	void respond();
    	void recieve();
     void udpBroadcaster();

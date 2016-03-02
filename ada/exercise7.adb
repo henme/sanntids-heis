@@ -103,7 +103,7 @@ procedure exercise7 is
          end;
          
          if Manager.Commit = True then
-            Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
+            Put_Line ("  Worker" & Integer'Image(Initial) & " committing" & Integer'Image(Num));
          else
             Put_Line ("  Worker" & Integer'Image(Initial) &
                       " reverting from" & Integer'Image(Num) &

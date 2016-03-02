@@ -6,11 +6,11 @@
 #include "network.hpp"
 
 int main () {
-    network com(8001, "127.0.0.1");
+    network com(8002, "127.0.0.1");
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     std::string sendmsg = "syn";
     while(1){
-	    com.send(sendmsg);
+	    //com.send(sendmsg);
 	    std::vector<std::string> msg = com.get_messages();
 		for (auto i = msg.begin(); i != msg.end(); ++i){
 	    	std::cout << *i << "\n";

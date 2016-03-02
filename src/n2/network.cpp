@@ -22,6 +22,7 @@ typedef boost::shared_ptr< list<socket_ptr> > clientList_ptr;
 typedef boost::shared_ptr< queue<clientMap_ptr> > messageQueue_ptr;
 
 const int bufSize = 1024;
+const int timeout_milli = 1000;
 
 io_service service;
 boost::mutex mtx;
@@ -30,6 +31,7 @@ messageQueue_ptr OutMessageQueue(new queue<clientMap_ptr>);
 
 network::network(int port, string ip) : port(port), ip(ip)
 {
+    //Start approriate threads
     new boost::thread(bind(&network::connectionHandler, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
     new boost::thread(bind(&network::recieve, this));
@@ -50,15 +52,11 @@ void network::connectionHandler(){
         mtx.lock();
         clientList->emplace_back(clientSock);
         mtx.unlock();
-
+        //socket_base::keep_alive keepAlive(true);
+        //clientSock->set_option(keepAlive);
         std::string s = clientSock->remote_endpoint().address().to_string();
         cout << s << " connected sucsessfully!" << endl;
     }
-}
-
-void network::heartbeat(){
-
-
 }
 
 void network::send(string msg){
@@ -165,13 +163,13 @@ void network::udpBroadcaster(){
     io_service io_service;
     udp::socket socket(io_service, udp::endpoint(udp::v4(), 0));
     socket.set_option(socket_base::broadcast(true));
-    ip::udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8888);
+    ip::udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8887);
     char data[bufSize];
     strcpy(data, ip.c_str());
     socket.send_to(buffer(data), broadcast_endpoint);
 //NOTE: to loop back to localHost, different UDP ports are used in testing! Cant use same socket
     //Listen for incomming broadcast
-    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8887 ));
+    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888 ));
     udp::endpoint sender_endpoint;
     while(true)
     {

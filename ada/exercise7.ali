@@ -28,7 +28,7 @@ RV MAX_PROTECTED_ENTRIES=1
 RV MAX_TASKS=1+
 RV MAX_ENTRY_QUEUE_LENGTH=1+
 
-U exercise7%b		exercise7.adb		519fb8ae NE OO SU IL
+U exercise7%b		exercise7.adb		b25a4278 NE OO SU IL
 W ada%s			ada.ads			ada.ali
 W ada.calendar.delays%s	a-caldel.adb		a-caldel.ali
 W ada.exceptions%s	a-except.adb		a-except.ali
@@ -70,7 +70,7 @@ D a-tags.ads		20111212115430 6c0509d0
 D a-textio.ads		20130104124955 386df5d4
 D a-tiinio.ads		20090409150019 aa04e5d6
 D a-unccon.ads		20070406091342 f9eb8f06
-D exercise7.adb		20160229150911 d67ccad5
+D exercise7.adb		20160302061146 35b93003
 D interfac.ads		20110906094621 129923ea
 D i-c.ads		20110801143639 5421119b
 D i-cstrea.ads		20130102105938 3286f6aa
@@ -143,7 +143,7 @@ X 16 exercise7.adb
 60N4 Error_Rate 65r29
 77T14 Transaction_Worker 77d34 77d53 78b14 121l8 121t26 125r15 126r15 127r15
 77i34 Initial{integer} 79r34 83r42 86r45 99r57 106r50 108r50
-79i7 Num{integer} 80r34 94m13 94r41 106r90 109r57 114m13 117r18
+79i7 Num{integer} 80r34 94m13 94r41 106r91 109r57 114m13 117r18
 80i7 Prev{integer} 110r45 114r20 117m10
 81i7 Round_Num{integer} 86r89 87m10 87r23
 123w4 Manager{11W19} 125m38 125r38 126m38 126r38 127m38 127r38
