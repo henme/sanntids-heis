@@ -8,7 +8,7 @@
 int main () {
     network com(8001, "127.0.0.1");
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    std::string sendmsg = "syn";
+    std::string sendmsg = "Hola";
     while(1){
 	    //com.send(sendmsg);
 	    std::vector<std::string> msg = com.get_messages();
