@@ -6,7 +6,6 @@ RN
 RV SIMPLE_BARRIERS
 RV NO_DELAY
 RV NO_DIRECT_BOOLEAN_OPERATORS
-RV NO_ENUMERATION_MAPS
 RV NO_EXCEPTION_HANDLERS
 RV NO_EXCEPTION_PROPAGATION
 RV NO_EXCEPTIONS
@@ -19,16 +18,18 @@ RV NO_LOCAL_PROTECTED_OBJECTS
 RV NO_NESTED_FINALIZATION
 RV NO_PROTECTED_TYPES
 RV NO_RELATIVE_DELAY
+RV NO_SELECT_STATEMENTS
 RV NO_STANDARD_STORAGE_POOLS
 RV NO_TASK_HIERARCHY
 RV NO_TASKING
 RV NO_DEFAULT_INITIALIZATION
 RV SPARK
-RV MAX_PROTECTED_ENTRIES=1
+RV MAX_PROTECTED_ENTRIES=2
 RV MAX_TASKS=1+
+RV MAX_ASYNCHRONOUS_SELECT_NESTING=1+
 RV MAX_ENTRY_QUEUE_LENGTH=1+
 
-U exercise7%b		exercise7.adb		b25a4278 NE OO SU IL
+U exercise8%b		exercise8.adb		91aca019 NE OO SU IL
 W ada%s			ada.ads			ada.ali
 W ada.calendar.delays%s	a-caldel.adb		a-caldel.ali
 W ada.exceptions%s	a-except.adb		a-except.ali
@@ -41,9 +42,7 @@ W ada.text_io%s		a-textio.adb		a-textio.ali
 W system%s		system.ads		system.ali
 W system.concat_3%s	s-conca3.adb		s-conca3.ali
 W system.concat_4%s	s-conca4.adb		s-conca4.ali
-W system.concat_6%s	s-conca6.adb		s-conca6.ali
 W system.exception_table%s  s-exctab.adb	s-exctab.ali
-W system.img_bool%s	s-imgboo.adb		s-imgboo.ali
 W system.img_int%s	s-imgint.adb		s-imgint.ali
 W system.parameters%s	s-parame.adb		s-parame.ali
 W system.soft_links%s	s-soflin.adb		s-soflin.ali
@@ -70,7 +69,7 @@ D a-tags.ads		20111212115430 6c0509d0
 D a-textio.ads		20130104124955 386df5d4
 D a-tiinio.ads		20090409150019 aa04e5d6
 D a-unccon.ads		20070406091342 f9eb8f06
-D exercise7.adb		20160302061146 35b93003
+D exercise8.adb		20160308030420 164fd262
 D interfac.ads		20110906094621 129923ea
 D i-c.ads		20110801143639 5421119b
 D i-cstrea.ads		20130102105938 3286f6aa
@@ -78,13 +77,11 @@ D system.ads		20140416144310 90249111
 D s-atacco.ads		20120515093410 4c36d12f
 D s-conca3.ads		20090420091404 762a026a
 D s-conca4.ads		20090420091404 025fe3be
-D s-conca6.ads		20090420091404 c7caf514
 D s-crtl.ads		20130102105938 1ea48bce
 D s-exctab.ads		20090417131547 66e51330
 D s-ficobl.ads		20120709130952 55a71d43
 D s-finmas.ads		20111024091915 b95bb341
 D s-finroo.ads		20120426095924 4ff27390
-D s-imgboo.ads		20090409150019 f5d971eb
 D s-imgint.ads		20090409150019 02dbe0c2
 D s-linux.ads		20110906091515 70c7cb45
 D s-multip.ads		20101011073009 38ac9f73
@@ -112,45 +109,45 @@ D s-traent.ads		20090417130712 5221ee41
 D s-unstyp.ads		20090409150019 6ae15c76
 D s-wchcon.ads		20090417130712 bfeb2e3d
 X 1 ada.ads
-16K9*Ada 19e8 16|1r6 1r19 1r40 2r6 2r19 2r40
+16K9*Ada 19e8 16|2r6 2r19 2r40 3r6 3r19 3r40
 X 6 a-inteio.ads
-18K13*Integer_Text_IO[14|45] 16|1w23 2r23
+18K13*Integer_Text_IO[14|45] 16|2w23 3r23
 X 8 a-numeri.ads
-16K13*Numerics 32e17 16|1r44 2r44
+16K13*Numerics 32e17 16|2r44 3r44
 X 9 a-nuflra.ads
-41K22*Float_Random 72e30 16|1w53 2r53
-45R9*Generator 16|9r21
+41K22*Float_Random 72e30 16|2w53 3r53
+45R9*Generator 16|8r23
 47F12*Uniformly_Distributed{float}
-49V13*Random{47F12}<38|62p13> 16|65s12 66s28 69s28
-51U14*Reset<38|91p14> 16|130s4
+49V13*Random{47F12}<36|62p13> 16|53s12 54s34 57s34
+51U14*Reset<36|91p14> 16|117s5
 X 13 a-textio.ads
-49K13*Text_IO 471e16 16|1w10 2r10
-263U14*Put_Line 16|26s10 83s7 86s10 99s19 106s13 108s13
-X 16 exercise7.adb
-6U11*exercise7 6b11 131l5 131t14
-8X4 Count_Failed 67r18 97r18
-9r4 Gen{9|45R9} 65r20 66r36 69r36 130r10
-11W19 Transaction_Manager 11d40 19l8 19e27 20b19 54l7 54t26 77r70 123r22
-11i40 N{positive} 21r66 29r30
-12Y19 Finished 21b13 21r49 26r65 29r13 38r13 42l11 42t19 95s21 101s27
-13V19 Commit{boolean} 49b16 52l11 52t17 105s21
-14U19 Signal_Abort 44b17 47l11 47t23 100s27
-16b7 Finished_Gate_Open{boolean} 21r27 30r13 39r13
-17b7 Aborted{boolean} 27r54 34r13 40r13 46r10
-18b7 Will_Commit{boolean} 31r13 35r13 51r17
-59V13 Unreliable_Slow_Add{integer} 59b13 59>34 72l8 72t27 94s20
-59i34 x{integer} 70r24
-60N4 Error_Rate 65r29
-77T14 Transaction_Worker 77d34 77d53 78b14 121l8 121t26 125r15 126r15 127r15
-77i34 Initial{integer} 79r34 83r42 86r45 99r57 106r50 108r50
-79i7 Num{integer} 80r34 94m13 94r41 106r91 109r57 114m13 117r18
-80i7 Prev{integer} 110r45 114r20 117m10
-81i7 Round_Num{integer} 86r89 87m10 87r23
-123w4 Manager{11W19} 125m38 125r38 126m38 126r38 127m38 127r38
-125t4 Worker_1{77T14}
-126t4 Worker_2{77T14}
-127t4 Worker_3{77T14}
-X 41 s-stausa.ads
+49K13*Text_IO 471e16 16|2w10 3r10
+263U14*Put_Line 16|71s9 77s17 88s17 95s25 103s13
+X 16 exercise8.adb
+5U11*exercise8 5b11 118l5 118t14
+7X5 Count_Failed 58r19 94r30
+8r5 Gen{9|45R9} 53r19 54r41 57r41 117r11
+10W20 Transaction_Manager 10d41 17l9 17e28 19b20 46l9 46t28 65r71 110r23
+10i41 N{positive} 21r68
+11Y15 Finished 21b15 21r51 27r16 31l13 31t21 84s25 99s25
+12Y15 Wait_Until_Aborted 33b15 36r16 39l13 39t31 75s25
+13U19 Signal_Abort 41b19 44l13 44t25 96s33
+15b9 Finished_Gate_Open{boolean} 21r29 24r13 28r17
+16b9 Aborted{boolean} 33r39 37r17 43r13
+50V14 Unreliable_Slow_Add{integer} 50b14 50>35 60l9 60t28 92s28
+50i35 x{integer} 55r20
+51N5 Error_Rate 53r26
+65T15 Transaction_Worker 65d35 65d54 66b15 108l9 108t27 112r16 113r16 114r16
+65i35 Initial{integer} 67r36 71r44 77r54 88r52 95r60 103r50
+67i9 Num{integer} 68r36 81m17 82m17 82r24 92m21 92r48 103r90 104r21
+68i9 Prev{integer} 81r24 104m13
+69i9 Round_Num{integer} 88r96 89m17 89r30
+94r26 E{4|66R9}
+110w5 Manager{10W20} 112m39 112r39 113m39 113r39 114m39 114r39
+112t5 Worker_1{65T15}
+113t5 Worker_2{65T15}
+114t5 Worker_3{65T15}
+X 39 s-stausa.ads
 203U14*Initialize 204i<c,__gnat_stack_usage_initialize>22
 268U14*Output_Results 272i<c,__gnat_stack_usage_output_results>22
 

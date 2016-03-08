@@ -7,6 +7,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "network.hpp"
 
@@ -22,6 +23,7 @@ typedef boost::shared_ptr< list<socket_ptr> > clientList_ptr;
 typedef boost::shared_ptr< queue<clientMap_ptr> > messageQueue_ptr;
 
 const int bufSize = 1024;
+const int heartbeat_time_ms = 1000;
 
 io_service service;
 boost::mutex mtx;
@@ -37,7 +39,9 @@ network::network(int port, string ip) : port(port), ip(ip)
     new boost::thread(bind(&network::respond, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));        
     new boost::thread(bind(&network::udpBroadcaster, this));
-    boost::this_thread::sleep( boost::posix_time::millisec(100));   
+    boost::this_thread::sleep( boost::posix_time::millisec(100));
+    new boost::thread(bind(&network::heartbeat, this));
+    boost::this_thread::sleep( boost::posix_time::millisec(100));      
 }
 
 void network::connectionHandler(){
@@ -57,8 +61,14 @@ void network::connectionHandler(){
 }
 
 void network::heartbeat(){
-
-
+    while(true){
+        send("syn");
+        for(auto& clientSock : *clientList)
+        {
+            //if timestape outdated, close socket
+        }
+        boost::this_thread::sleep(boost::posix_time::millisec(heartbeat_time_ms));   
+    }
 }
 
 void network::send(string msg){

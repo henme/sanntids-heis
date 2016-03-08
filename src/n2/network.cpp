@@ -7,6 +7,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "network.hpp"
 
@@ -22,7 +23,7 @@ typedef boost::shared_ptr< list<socket_ptr> > clientList_ptr;
 typedef boost::shared_ptr< queue<clientMap_ptr> > messageQueue_ptr;
 
 const int bufSize = 1024;
-const int timeout_milli = 1000;
+const int heartbeat_time_ms = 1000;
 
 io_service service;
 boost::mutex mtx;
@@ -31,7 +32,6 @@ messageQueue_ptr OutMessageQueue(new queue<clientMap_ptr>);
 
 network::network(int port, string ip) : port(port), ip(ip)
 {
-    //Start approriate threads
     new boost::thread(bind(&network::connectionHandler, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
     new boost::thread(bind(&network::recieve, this));
@@ -39,7 +39,9 @@ network::network(int port, string ip) : port(port), ip(ip)
     new boost::thread(bind(&network::respond, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));        
     new boost::thread(bind(&network::udpBroadcaster, this));
-    boost::this_thread::sleep( boost::posix_time::millisec(100));   
+    boost::this_thread::sleep( boost::posix_time::millisec(100));
+    new boost::thread(bind(&network::heartbeat, this));
+    boost::this_thread::sleep( boost::posix_time::millisec(100));      
 }
 
 void network::connectionHandler(){
@@ -52,10 +54,20 @@ void network::connectionHandler(){
         mtx.lock();
         clientList->emplace_back(clientSock);
         mtx.unlock();
-        //socket_base::keep_alive keepAlive(true);
-        //clientSock->set_option(keepAlive);
+
         std::string s = clientSock->remote_endpoint().address().to_string();
         cout << s << " connected sucsessfully!" << endl;
+    }
+}
+
+void network::heartbeat(){
+    while(true){
+        send("syn");
+        for(auto& clientSock : *clientList)
+        {
+            //if timestape outdated, close socket
+        }
+        boost::this_thread::sleep(boost::posix_time::millisec(heartbeat_time_ms));   
     }
 }
 

@@ -15,7 +15,7 @@ procedure exercise7 is
    private
       Finished_Gate_Open   : Boolean := False;
       Aborted              : Boolean := False;
-      Will_Commit          : Boolean := True;
+      Should_Commit          : Boolean := True;
    end Transaction_Manager;
    protected body Transaction_Manager is
       entry Finished when Finished_Gate_Open or Finished'Count = N is
@@ -28,11 +28,11 @@ procedure exercise7 is
 
          if Finished'Count = N - 1 then
             Finished_Gate_Open := True;
-            Will_Commit := True;
+            Should_Commit := True;
          end if;
 
          if Aborted then
-            Will_Commit := False;
+            Should_Commit := False;
          end if;
 
          if Finished'Count = 0 then
@@ -48,7 +48,7 @@ procedure exercise7 is
 
       function Commit return Boolean is
       begin
-         return Will_Commit;
+         return Should_Commit;
       end Commit;
       
   end Transaction_Manager;
