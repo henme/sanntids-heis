@@ -10,7 +10,7 @@ int main () {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     std::string sendmsg = "Hola";
     while(1){
-	    //com.send(sendmsg);
+	    com.send(sendmsg);
 	    std::vector<std::string> msg = com.get_messages();
 		for (auto i = msg.begin(); i != msg.end(); ++i){
 	    	std::cout << *i << "\n";
