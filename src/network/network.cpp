@@ -130,7 +130,6 @@ void network::recieve(){
                         char readBuf[bufSize] = {0};
                         int bytesRead = clientSock.first->read_some(buffer(readBuf, bufSize));
                         string_ptr msg(new string(readBuf, bytesRead));
-                        cout << *msg << " " << (*msg).length() << endl;
                         if(*msg == "syn")
                         {
                             char data[3];
@@ -149,7 +148,6 @@ void network::recieve(){
                         {
                             string client_ip = clientSock.first->remote_endpoint().address().to_string();
                             string payload = client_ip + " " + *msg; // If JSON, msg only
-                            cout << "pushing payload" << endl;
                             InnboundMessages.push_back(payload);
                         }
                     }
@@ -197,7 +195,6 @@ void network::udpBroadcaster(){
     char data[bufSize];
     strcpy(data, ip.c_str());
     socket.send_to(buffer(data), broadcast_endpoint);
-//NOTE: to loop back to localHost, different UDP ports are used in testing! Cant use same socket
     //Listen for incomming broadcast
     udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888 ));
     udp::endpoint sender_endpoint;
@@ -210,7 +207,7 @@ void network::udpBroadcaster(){
         {
             try
             {
-                tcp::endpoint ep(address::from_string(*msg), port); // Port = port, manual used for debug
+                tcp::endpoint ep(address::from_string(*msg), port);
                 socket_ptr sock(new tcp::socket(service));
                 sock->connect(ep);
                 clientList_mtx.lock();
