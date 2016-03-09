@@ -199,7 +199,7 @@ void network::udpBroadcaster(){
     socket.send_to(buffer(data), broadcast_endpoint);
 //NOTE: to loop back to localHost, different UDP ports are used in testing! Cant use same socket
     //Listen for incomming broadcast
-    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8887 ));
+    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888 ));
     udp::endpoint sender_endpoint;
     while(true)
     {
@@ -210,7 +210,7 @@ void network::udpBroadcaster(){
         {
             try
             {
-                tcp::endpoint ep(address::from_string(*msg), 8002); // Port = port, manual used for debug
+                tcp::endpoint ep(address::from_string(*msg), port); // Port = port, manual used for debug
                 socket_ptr sock(new tcp::socket(service));
                 sock->connect(ep);
                 clientList_mtx.lock();
