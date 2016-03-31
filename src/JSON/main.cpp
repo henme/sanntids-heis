@@ -7,15 +7,12 @@ using boost::property_tree::ptree;
 using boost::property_tree::read_json;
 using boost::property_tree::write_json;
 
-std::string toJSON(int CurrentFloor, int Dir, int FloorArr[4]){
+std::string toJSON(int ip, std::string type, std::string content){
   ptree pt;
 
-  pt.put("CurrentFloor", CurrentFloor);
-  pt.put("Dir", Dir);
-  pt.put("Floor1", FloorArr[0]);
-  pt.put("Floor2", FloorArr[1]);
-  pt.put("Floor3", FloorArr[2]);
-  pt.put("Floor4", FloorArr[3]);
+  pt.put("ip", ip);
+  pt.put("type", type);
+  pt.put("content", content);
 
   std::ostringstream buf; 
   write_json(buf, pt);
@@ -29,6 +26,7 @@ int main() {
   ptree pt, pt2;
   ptree children;
   ptree floor1, floor2, floor3, floor4;
+
 
   floor1.put("", 1);
   floor2.put("", 0);

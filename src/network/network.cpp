@@ -20,7 +20,7 @@ typedef boost::shared_ptr<string> string_ptr;
 typedef boost::shared_ptr< list< pair< socket_ptr, time_t > > > clientList_ptr;
 typedef boost::shared_ptr< queue<string> > messageQueue_ptr;
 
-const int bufSize = 1024; // Find max size of state data
+const int bufSize = 128; // Find max size of state data
 const double heartbeat_time = 3; //Acceptable waiting time?
 
 io_service service;
@@ -45,13 +45,21 @@ network::network(int port, string ip) : port(port), ip(ip)
 }
 
 void network::connectionHandler(){
-    cout << "Waiting for peers..." << endl;
+    //cout << "Waiting for peers..." << endl;
     tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), port));
     while(true)
     {
         socket_ptr clientSock(new tcp::socket(service));
         acceptor.accept(*clientSock);
         clientList_mtx.lock();
+        for(auto& sock : *clientList)
+        {
+            try{
+                if(sock.first->remote_endpoint().address().to_string() == clientSock->remote_endpoint().address().to_string())
+                    return; 
+            }
+            catch(exception& e){}
+        }
         clientList->emplace_back(make_pair(clientSock, time(NULL)));
         clientList_mtx.unlock();
         string s = clientSock->remote_endpoint().address().to_string();
@@ -130,7 +138,7 @@ void network::recieve(){
                         char readBuf[bufSize] = {0};
                         int bytesRead = clientSock.first->read_some(buffer(readBuf, bufSize));
                         string_ptr msg(new string(readBuf, bytesRead));
-                        if(*msg == "syn")
+                        if((*msg).compare(1,3,"syn"))
                         {
                             char data[3];
                             string ack = "ack";
@@ -139,16 +147,22 @@ void network::recieve(){
                                 clientSock.first->write_some(buffer(data));
                             }
                             catch(exception& e){}
+                            //Guard against concocted messages
+                            if((*msg).length() != 3){
+                                InnboundMessages.push_back((*msg).substr(3,(*msg).length()));
+                            }
                         }
-                        else if(*msg == "ack")
+                        else if((*msg).compare(1,3,"ack"))
                         {
                             clientSock.second = time(NULL);
+                            if((*msg).length() != 3){
+                                InnboundMessages.push_back((*msg).substr(3,(*msg).length()));
+                            }
                         }
                         else
                         {
-                            string client_ip = clientSock.first->remote_endpoint().address().to_string();
-                            string payload = client_ip + " " + *msg; // If JSON, msg only
-                            InnboundMessages.push_back(payload);
+                            //string client_ip = clientSock.first->remote_endpoint().address().to_string();
+                            InnboundMessages.push_back(*msg);
                         }
                     }
                     catch(exception& e){}
@@ -172,20 +186,6 @@ vector<string> network::get_messages(){
       return messages;
 }
 
-vector<string> network::get_listofPeers(){ // Probably not needeed
-    vector<string> listofPeers;
-    clientList_mtx.lock();
-    for(auto& clientSock : *clientList)
-    {
-        try{
-                listofPeers.push_back(clientSock.first->remote_endpoint().address().to_string());
-        }
-        catch(exception& e){}
-    }
-    clientList_mtx.unlock();
-    return listofPeers;
-}
-
 void network::udpBroadcaster(){
     //UDP broadcast, "Connect to me!" once on startup
     io_service io_service;
@@ -203,19 +203,30 @@ void network::udpBroadcaster(){
         char data[bufSize] ={0};
         size_t bytes_transferred = recieveSocket.receive_from(buffer(data), sender_endpoint);
         string_ptr msg(new string(data, bytes_transferred));
+        bool allreadyConnected = false;
         if(!msg->empty())
         {
-            try
+            for(auto& sock : *clientList)
             {
-                tcp::endpoint ep(address::from_string(*msg), port);
-                socket_ptr sock(new tcp::socket(service));
-                sock->connect(ep);
-                clientList_mtx.lock();
-                clientList->emplace_back(make_pair(sock, time(NULL)));
-                clientList_mtx.unlock();
-                cout << "Broadcast recieved from: " << *msg <<" -> Connected!" << endl;
+                try{
+                    if(sock.first->remote_endpoint().address().to_string() == *msg)
+                        allreadyConnected = true; 
+                }
+                catch(exception& e){}
             }
-            catch(exception& e){}
+            if(!allreadyConnected){
+                try
+                {
+                    tcp::endpoint ep(address::from_string(*msg), port);
+                    socket_ptr sock(new tcp::socket(service));
+                    sock->connect(ep);
+                    clientList_mtx.lock();
+                    clientList->emplace_back(make_pair(sock, time(NULL)));
+                    clientList_mtx.unlock();
+                    cout << "Broadcast recieved from: " << *msg <<" -> Connected!" << endl;
+                }
+                catch(exception& e){}
+            }
         }
     }
 }

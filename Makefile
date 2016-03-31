@@ -7,7 +7,6 @@ PROJECTS = $(patsubst $(SRC)/%, %, $(wildcard $(SRC)/*))
 CC = g++
 CFLAGS = -Wall -g -std=c++11
 LINKFLAGS = -Wall -g -lboost_system -lboost_thread
-
 default:
 	@echo "Usage: make <PROJECT>|all"
 	@echo "Projects: $(PROJECTS)"
