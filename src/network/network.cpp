@@ -3,66 +3,76 @@
 #include <queue>
 #include <string>
 #include <cstdlib>
-#include <ctime>
-#include <tuple>
 
-#include <boost/asio.hpp>
 #include <boost/thread.hpp>
+#include <boost/algorithm/string/trim.hpp>
 
 #include "network.hpp"
 
 using namespace std;
 using namespace boost::asio;
 using namespace boost::asio::ip;
+using boost::asio::ip::address_v4;
 
 typedef boost::shared_ptr<tcp::socket> socket_ptr;
 typedef boost::shared_ptr<string> string_ptr;
-typedef boost::shared_ptr< list< tuple< socket_ptr, time_t, string > > > clientList_ptr;
+typedef boost::shared_ptr< list< tuple< socket_ptr, time_t, address_v4 > > > clientList_ptr;
 typedef boost::shared_ptr< queue<string> > messageQueue_ptr;
 
 const int bufSize = 128; 
-const double heartbeat_time = 3; //Acceptable waiting time?
+const double heartbeat_time = 3;
 
 io_service service;
 boost::mutex OutMessageQueue_mtx;
 boost::mutex clientList_mtx;
-clientList_ptr clientList(new list< tuple< socket_ptr, time_t, string > >);
+boost::mutex innboundMessages_mtx;
+boost::mutex connectedPeers_mtx;
+clientList_ptr clientList(new list< tuple< socket_ptr, time_t, address_v4 > >);
 messageQueue_ptr OutMessageQueue(new queue<string>);
 
-
-network::network(int port, string ip) : port(port), ip(ip)
+network::network(int port, address_v4 myIP) : port(port), myIP(myIP)
 {
     new boost::thread(bind(&network::connectionHandler, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
     new boost::thread(bind(&network::recieve, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
-    new boost::thread(bind(&network::respond, this));
+    new boost::thread(bind(&network::tcpMessageBroadcaster, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));        
+    new boost::thread(bind(&network::heartbeat, this));
+    boost::this_thread::sleep( boost::posix_time::millisec(100));
     new boost::thread(bind(&network::udpBroadcaster, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));
-    new boost::thread(bind(&network::heartbeat, this));
+    new boost::thread(bind(&network::udpListener, this));
     boost::this_thread::sleep( boost::posix_time::millisec(100));      
 }
 
 void network::connectionHandler(){
-    //cout << "Waiting for peers..." << endl;
     tcp::acceptor acceptor(service, tcp::endpoint(tcp::v4(), port));
     while(true)
     {
         socket_ptr clientSock(new tcp::socket(service));
         acceptor.accept(*clientSock);
         clientList_mtx.lock();
+        // Check if allready connected
         for(auto& sock : *clientList)
         {
-            if(get<2>(sock) == clientSock->remote_endpoint().address().to_string())
-                return; 
-
+            try{
+                if(get<2>(sock) == clientSock->remote_endpoint().address().to_v4()){
+                    return; 
+                } 
+            } catch(...){
+                cerr << "Could not reach remote endpoint in connectionHandler" << endl;
+            }
         }
-        string s = clientSock->remote_endpoint().address().to_string();
-        clientList->emplace_back(make_tuple(clientSock, time(NULL), s));
-        connectedPeers[s] = true;
+        connectedPeers_mtx.lock();
+        try{
+            address_v4 ip = clientSock->remote_endpoint().address().to_v4();
+            clientList->emplace_back(make_tuple(clientSock, time(NULL), ip));
+            connectedPeers.emplace_back(make_pair(ip,true));
+            cout << ip << " connected sucsessfully!" << endl;
+        } catch(...){cerr << "Could not connect to socket in connectionHandler, remote endpoint" << endl;}
+        connectedPeers_mtx.unlock();
         clientList_mtx.unlock();
-        cout << s << " connected sucsessfully!" << endl;
     }
 }
 
@@ -77,20 +87,17 @@ void network::heartbeat(){
                 if(seconds >= heartbeat_time)
                 { 
                     cout << "Client dissconected" << endl;
-                    string s = get<2>(clientSock);
-                    connectedPeers[s] = false;
+                    get<0>(clientSock)->close();
+                    address_v4 ip = get<2>(clientSock);
+                    connectedPeers_mtx.lock();
+                    connectedPeers.emplace_back(make_pair(ip,false));
+                    connectedPeers_mtx.unlock();
                     clientList->remove(clientSock);
                     break;
                 }
                 else
                 {
-                    char data[3];
-                    string syn = "syn";
-                    strcpy(data,syn.c_str());
-                    try{
-                        get<0>(clientSock)->write_some(buffer(data));
-                    }
-                    catch(exception& e){}
+                    sendtoSocket(get<0>(clientSock), "syn");
                 }
             }
             clientList_mtx.unlock();
@@ -99,22 +106,34 @@ void network::heartbeat(){
     }
 }
 
-void network::respond(){
+void network::sendtoSocket(socket_ptr clientSock, string msg){
+    char * data = new char[msg.size() + 1];
+    copy(msg.begin(), msg.end(), data);
+    data[msg.size()] = '\0';
+    try{
+        clientSock->write_some(buffer(data, strlen(data)));
+    }
+    catch(...){
+        cerr << "Could not connect to socket in sendtoSocket" << endl;
+    }
+    delete[] data;
+}
+
+void network::tcpMessageBroadcaster(){
     while(true)
     {
         if(!OutMessageQueue->empty())
         {
-            char data[bufSize] = {0};
-            string message = OutMessageQueue->front();
-            strcpy(data, message.c_str());
             clientList_mtx.lock();
             for(auto& clientSock : *clientList)
             {
                 try
                 {
-                    get<0>(clientSock)->write_some(buffer(data));
+                    sendtoSocket(get<0>(clientSock), OutMessageQueue->front());
                 }
-                catch(exception& e){}
+                catch(...){
+                    cerr << "Could not send to socket in tcpMessageBroadcaster" << endl;
+                }
             }
             clientList_mtx.unlock();
             OutMessageQueue_mtx.lock();
@@ -139,54 +158,42 @@ void network::recieve(){
                         char readBuf[bufSize] = {0};
                         int bytesRead = get<0>(clientSock)->read_some(buffer(readBuf, bufSize));
                         string_ptr msg(new string(readBuf, bytesRead));
-                        if ((msg->find("syn") == string::npos) && (msg->find("ack") == string::npos))
-                        {
-                            if(msg->length() > 10){
-                                InnboundMessages.push_back(*msg);
-                            }
-                        }
-                        if(msg->find("syn") != string::npos)
-                        {
-                            //cout << "syn received " << endl;
-
-                            while(msg->find("syn") != string::npos){
-                                //cout << "syn removed" << endl;
-                                msg->erase(msg->find("syn"),3);
-                            }
-
-                            char data[3];
-                            string ack = "ack";
-                            strcpy(data,ack.c_str());
-                            try{
-                                get<0>(clientSock)->write_some(buffer(data));
-                            }
-                            catch(exception& e){}
-                            //Guard against concocted messages
-                            if(msg->length() > 10){
-                                //cout << "syn parse" << endl;
-                                InnboundMessages.push_back(*msg);
-                            }
-                        }
-                        if(msg->find("ack") != string::npos)
-                        {
-                            //cout << "ack received " << endl;
-                            while(msg->find("ack") != string::npos){
-                                //cout << "ack removed" << endl;
-                                msg->erase(msg->find("ack"),3);
-                            }
-                            get<1>(clientSock) = time(NULL);
-                            if(msg->length() > 10){
-                                //cout << "ack parse" << endl;
-                                InnboundMessages.push_back(*msg);
-                            }
-                        }
+                        messageParser(clientSock, msg);
                     }
-                    catch(exception& e){}
+                    catch(...){
+                        cerr << "Could not read from socket in recieve" << endl;
+                    }
                 }
             }
             clientList_mtx.unlock();
         }
         boost::this_thread::sleep(boost::posix_time::millisec(100));
+    }
+}
+
+void network::messageParser(tuple<socket_ptr, time_t, address_v4> &clientSock, string_ptr msg){
+    boost::algorithm::trim(*msg);
+    if(msg->find("syn") != string::npos){
+        do {
+            msg->erase(msg->find("syn"),3);
+        } while(msg->find("syn") != string::npos);
+        sendtoSocket(get<0>(clientSock), "ack");
+    }
+    if(msg->find("ack") != string::npos){
+        get<1>(clientSock) = time(NULL);
+        do {
+            msg->erase(msg->find("ack"),3);
+        } while(msg->find("ack") != string::npos);
+    }
+    if(!msg->empty()){
+        innboundMessages_mtx.lock();
+        try{
+            address_v4 myIP = get<0>(clientSock)->remote_endpoint().address().to_v4();
+            InnboundMessages.push_back(make_pair(myIP, *msg));
+        } catch(...){
+            cerr << "Could not reach remote endpoint in messageParser" << endl;
+        }
+        innboundMessages_mtx.unlock();
     }
 }
 
@@ -196,58 +203,104 @@ void network::send(string msg){
     OutMessageQueue_mtx.unlock();
 }
 
-vector<string> network::get_messages(){
-      vector<string> messages = InnboundMessages;
-      InnboundMessages = {};
-      return messages;
+vector<pair<address_v4, string>> network::get_messages(){
+    innboundMessages_mtx.lock();
+    vector<pair<address_v4, string>> messages = InnboundMessages;
+    InnboundMessages = {};
+    innboundMessages_mtx.unlock();
+    return messages;
 }
 
-map<string, bool> network::get_listofPeers(){
-      map<string, bool> peers = connectedPeers;
-      connectedPeers.clear();
-      return peers;    
+vector<pair<address_v4, bool>>  network::get_listofPeers(){
+    connectedPeers_mtx.lock();
+    vector<pair<address_v4, bool>>  peers = connectedPeers;
+    connectedPeers_mtx.unlock();
+    connectedPeers = {};
+    return peers;    
 }
 
 
 void network::udpBroadcaster(){
-    //UDP broadcast, "Connect to me!" once on startup
     io_service io_service;
     udp::socket socket(io_service, udp::endpoint(udp::v4(), 0));
     socket.set_option(socket_base::broadcast(true));
     udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8888);
-    char data[bufSize];
-    strcpy(data, ip.c_str());
-    socket.send_to(buffer(data), broadcast_endpoint);
-    //Listen for incomming broadcast
-    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888 ));
+    string ip_string = myIP.to_string();
+    char * data = new char[ip_string.size() + 1];
+    copy(ip_string.begin(), ip_string.end(), data);
+    data[ip_string.size()] = '\0';
+    bool socketClosed = false;
+    while(true){
+        if(socketClosed){
+            try{
+                udp::endpoint broadcast_endpoint(address_v4::broadcast(), 8888);
+                socketClosed = false;
+            } catch(...){ 
+                cerr << "Could not open socket in udpBroadcaster" << endl;
+            }
+        }
+        try{
+            socket.send_to(buffer(data, strlen(data)), broadcast_endpoint);
+        } catch(...){
+            socket.close();
+            socketClosed = true;
+            cerr << "Could not connect to socket in udpBroadcaster" << endl;
+        }
+        boost::this_thread::sleep(boost::posix_time::millisec(10000));
+    }
+}
+
+void network::udpListener(){
+    io_service io_service;
+    udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888));
     udp::endpoint sender_endpoint;
+    bool socketClosed = false;
     while(true)
     {
+        if (socketClosed == true){
+            try{
+                udp::socket recieveSocket(io_service, udp::endpoint(udp::v4(), 8888));
+                udp::endpoint sender_endpoint;
+                socketClosed = false;
+            }catch(...){
+                cerr << "Could not open socket in udpBroadcaster" << endl;
+            }
+        }
         char data[bufSize] ={0};
         size_t bytes_transferred = recieveSocket.receive_from(buffer(data), sender_endpoint);
         string_ptr msg(new string(data, bytes_transferred));
-        bool allreadyConnected = false;
         if(!msg->empty())
         {
+            bool allreadyConnected = false;
+            clientList_mtx.lock();
             for(auto& sock : *clientList)
             {
-                if(get<2>(sock) == *msg) 
+                if(get<2>(sock) == address_v4::from_string(*msg)) {
+                    cout << "client list ip: " << get<2>(sock) << endl;
                     allreadyConnected = true; 
+                }
             }
-            if(!allreadyConnected){
+            cout << *msg << endl;
+            if(!allreadyConnected && myIP != address_v4::from_string(*msg)){
+                connectedPeers_mtx.lock();
                 try
                 {
                     tcp::endpoint ep(address::from_string(*msg), port);
                     socket_ptr sock(new tcp::socket(service));
                     sock->connect(ep);
-                    clientList_mtx.lock();
-                    clientList->emplace_back(make_tuple(sock, time(NULL), *msg));
-                    connectedPeers[*msg] = true;
-                    clientList_mtx.unlock();
-                    cout << "Broadcast recieved from: " << *msg <<" -> Connected!" << endl;
+                    clientList->emplace_back(make_tuple(sock, time(NULL), address_v4::from_string(*msg)));
+                    connectedPeers.emplace_back(make_pair(address_v4::from_string(*msg),true));
+                    cout << "Broadcast recieved from: " << *msg << " -> Connected!" << endl;
                 }
-                catch(exception& e){}
+                catch(...){
+                    recieveSocket.close();
+                    socketClosed = true;
+                    cerr << "Could not connect to socket in udpListener" << endl;
+                }
+                connectedPeers_mtx.unlock();
             }
+            clientList_mtx.unlock();
         }
     }
+    boost::this_thread::sleep(boost::posix_time::millisec(100));
 }
